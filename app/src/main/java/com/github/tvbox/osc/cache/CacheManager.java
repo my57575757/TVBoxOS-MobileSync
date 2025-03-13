@@ -1,11 +1,32 @@
 package com.github.tvbox.osc.cache;
 
+import android.os.StrictMode;
+
 import com.github.tvbox.osc.data.AppDataManager;
+import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.LOG;
+import com.github.tvbox.osc.util.SyncUtil;
+import com.google.android.exoplayer2.util.Log;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import com.orhanobut.hawk.Hawk;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 类描述:
@@ -71,6 +92,7 @@ public class CacheManager {
         cache.key = key;
         cache.data = toByteArray(body);
         AppDataManager.get().getCacheDao().delete(cache);
+        SyncUtil.deleteSync(key,body);
     }
 
     public static <T> void save(String key, T body) {
@@ -78,13 +100,20 @@ public class CacheManager {
         cache.key = key;
         cache.data = toByteArray(body);
         AppDataManager.get().getCacheDao().save(cache);
+        SyncUtil.saveSync(key,body);
     }
 
     public static Object getCache(String key) {
         Cache cache = AppDataManager.get().getCacheDao().getCache(key);
+        Long resVal = SyncUtil.getCache(key);
+        if (resVal!=null){
+            return resVal;
+        }
         if (cache != null && cache.data != null) {
             return toObject(cache.data);
         }
         return null;
     }
+
+
 }

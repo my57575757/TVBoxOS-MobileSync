@@ -56,7 +56,7 @@ class CollectActivity : BaseVbActivity<ActivityCollectBinding>() {
                 val vodInfo = collectAdapter.data[position]
                 if (vodInfo != null) {
                     collectAdapter.remove(position)
-                    RoomDataManger.deleteVodCollect(vodInfo.id)
+                    RoomDataManger.deleteVodCollect(vodInfo.id,vodInfo.sourceKey,vodInfo.vodId)
                 }
                 if (collectAdapter.data.isEmpty()) {
                     mBinding.topTip.visibility = View.GONE

@@ -17,6 +17,8 @@ import com.github.tvbox.osc.ui.adapter.SelectDialogAdapter.SelectDialogInterface
 import com.github.tvbox.osc.ui.dialog.BackupDialog
 import com.github.tvbox.osc.ui.dialog.LiveApiDialog
 import com.github.tvbox.osc.ui.dialog.SelectDialog
+import com.github.tvbox.osc.ui.dialog.SyncApiDialog
+import com.github.tvbox.osc.ui.dialog.SyncUserDialog
 import com.github.tvbox.osc.util.FastClickCheckUtil
 import com.github.tvbox.osc.util.FileUtils
 import com.github.tvbox.osc.util.HawkConfig
@@ -68,6 +70,18 @@ class SettingActivity : BaseVbActivity<ActivitySettingBinding>() {
             XPopup.Builder(mContext)
                 .autoFocusEditText(false)
                 .asCustom(LiveApiDialog(this))
+                .show()
+        }
+        mBinding.syncApi.setOnClickListener {
+            XPopup.Builder(mContext)
+                .autoFocusEditText(false)
+                .asCustom(SyncApiDialog(this))
+                .show()
+        }
+        mBinding.syncUser.setOnClickListener {
+            XPopup.Builder(mContext)
+                .autoFocusEditText(false)
+                .asCustom(SyncUserDialog(this))
                 .show()
         }
 

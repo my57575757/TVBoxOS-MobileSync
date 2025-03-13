@@ -6,6 +6,7 @@ import com.github.tvbox.osc.api.ApiConfig;
 import com.github.tvbox.osc.bean.SourceBean;
 import com.github.tvbox.osc.bean.VodInfo;
 import com.github.tvbox.osc.data.AppDataManager;
+import com.github.tvbox.osc.util.SyncUtil;
 import com.google.gson.ExclusionStrategy;
 import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.HistoryHelper;
@@ -56,10 +57,12 @@ public class RoomDataManger {
         record.updateTime = System.currentTimeMillis();
         record.dataJson = getVodInfoGson().toJson(vodInfo);
         AppDataManager.get().getVodRecordDao().insert(record);
+        VodRecord finalRecord = record;
+        SyncUtil.addRecord(finalRecord);
     }
 
     public static VodInfo getVodInfo(String sourceKey, String vodId) {
-        VodRecord record = AppDataManager.get().getVodRecordDao().getVodRecord(sourceKey, vodId);
+        VodRecord record = SyncUtil.getRecord(sourceKey, vodId);
         try {
             if (record != null && record.dataJson != null && !TextUtils.isEmpty(record.dataJson)) {
                 VodInfo vodInfo = getVodInfoGson().fromJson(record.dataJson, new TypeToken<VodInfo>() {
@@ -79,16 +82,11 @@ public class RoomDataManger {
         if (record != null) {
             AppDataManager.get().getVodRecordDao().delete(record);
         }
+        SyncUtil.deleteVodRecord(sourceKey,vodInfo);
     }
 
     public static List<VodInfo> getAllVodRecord(int limit) {
-        int count = AppDataManager.get().getVodRecordDao().getCount();
-        Integer index = Hawk.get(HawkConfig.HISTORY_NUM, 0);
-        Integer hisNum = HistoryHelper.getHisNum(index);
-        if ( count > hisNum ) {
-            AppDataManager.get().getVodRecordDao().reserver(hisNum);
-        }
-        List<VodRecord> recordList = AppDataManager.get().getVodRecordDao().getAll(limit);
+        List<VodRecord> recordList = SyncUtil.getAllVodRecord(limit);
         List<VodInfo> vodInfoList = new ArrayList<>();
         if (recordList != null) {
             for (VodRecord record : recordList) {
@@ -124,10 +122,13 @@ public class RoomDataManger {
         record.name = vodInfo.name;
         record.pic = vodInfo.pic;
         AppDataManager.get().getVodCollectDao().insert(record);
+        VodCollect finalRecord = record;
+        SyncUtil.addCollect(finalRecord);
     }
 
-    public static void deleteVodCollect(int id) {
+    public static void deleteVodCollect(int id, String sourceKey,String vodId) {
         AppDataManager.get().getVodCollectDao().delete(id);
+        SyncUtil.delCollect(sourceKey,vodId);
     }
 
     public static void deleteVodCollect(String sourceKey, VodInfo vodInfo) {
@@ -135,15 +136,16 @@ public class RoomDataManger {
         if (record != null) {
             AppDataManager.get().getVodCollectDao().delete(record);
         }
+        SyncUtil.delCollect(sourceKey,vodInfo.id);
     }
 
     public static boolean isVodCollect(String sourceKey, String vodId) {
-        VodCollect record = AppDataManager.get().getVodCollectDao().getVodCollect(sourceKey, vodId);
+        VodCollect record = SyncUtil.getCollect(sourceKey,vodId);
         return record != null;
     }
 
     public static List<VodCollect> getAllVodCollect() {
-        return AppDataManager.get().getVodCollectDao().getAll();
+        return SyncUtil.getCollectAll();
     }
 
     /**
@@ -151,6 +153,7 @@ public class RoomDataManger {
      */
     public static void deleteVodCollectAll() {
         AppDataManager.get().getVodCollectDao().deleteAll();
+        SyncUtil.delCollect(null,null);
     }
 
     /**
@@ -158,6 +161,8 @@ public class RoomDataManger {
      */
     public static void deleteVodRecordAll() {
         AppDataManager.get().getVodRecordDao().deleteAll();
+        VodInfo vodInfo = new VodInfo();
+        SyncUtil.deleteVodRecord(null,vodInfo);
     }
 
 }
