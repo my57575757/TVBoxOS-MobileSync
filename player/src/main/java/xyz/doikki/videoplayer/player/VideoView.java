@@ -22,6 +22,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.github.tvbox.osc.player.R;
+import com.google.android.exoplayer2.util.Log;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -71,6 +72,7 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
     //--------- data sources ---------//
     protected String mUrl;//当前播放视频的地址
     protected String mProgressKey = null;
+    protected String trueUrl;
     protected Map<String, String> mHeaders;//当前视频地址的请求头
     protected AssetFileDescriptor mAssetFileDescriptor;//assets文件
 
@@ -207,7 +209,18 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
         }
         //读取播放进度
         if (mProgressManager != null) {
-            mCurrentPosition = mProgressManager.getSavedProgress(mProgressKey == null ? mUrl : mProgressKey);
+            Log.e("murl,mProgressKey::",mUrl+","+mProgressKey);
+            String url = trueUrl;
+            if (url==null){
+                url = mProgressKey;
+            }
+            if (url==null){
+                url = mUrl;
+            }
+            if (url!=null && url.contains("?")){
+                url = url.substring(0,url.indexOf("?"));
+            }
+            mCurrentPosition = mProgressManager.getSavedProgress(url);
         }
         initPlayer();
         addDisplay();
@@ -403,7 +416,18 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
     protected void saveProgress() {
         if (mProgressManager != null && mCurrentPosition > 0) {
             L.d("saveProgress: " + mCurrentPosition);
-            mProgressManager.saveProgress(mProgressKey == null ? mUrl : mProgressKey, mCurrentPosition);
+            L.d("mProgressKey,mUrl: " + mProgressKey+","+mUrl);
+            String url = trueUrl;
+            if (url==null){
+                url = mProgressKey;
+            }
+            if (url==null){
+                url = mUrl;
+            }
+            if (url!=null && url.contains("?")){
+                url = url.substring(0,url.indexOf("?"));
+            }
+            mProgressManager.saveProgress(url, mCurrentPosition);
         }
     }
 
@@ -618,8 +642,8 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
     /**
      * 设置视频地址
      */
-    public void setUrl(String url) {
-        setUrl(url, null);
+    public void setUrl(String url,String trueUrl) {
+        setUrl(url, null, trueUrl);
     }
 
     /**
@@ -628,10 +652,11 @@ public class VideoView<P extends AbstractPlayer> extends FrameLayout
      * @param url     视频地址
      * @param headers 请求头
      */
-    public void setUrl(String url, Map<String, String> headers) {
+    public void setUrl(String url, Map<String, String> headers,String trueUrl) {
         mAssetFileDescriptor = null;
         mUrl = url;
         mHeaders = headers;
+        this.trueUrl = trueUrl;
     }
 
     /**

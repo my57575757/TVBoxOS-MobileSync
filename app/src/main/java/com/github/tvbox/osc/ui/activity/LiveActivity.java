@@ -390,7 +390,7 @@ public class LiveActivity extends BaseActivity {
         }
         showBottomEpg();
 
-        mVideoView.setUrl(currentLiveChannelItem.getUrl());
+        mVideoView.setUrl(currentLiveChannelItem.getUrl(),currentLiveChannelItem.getUrl());
        // showChannelInfo();
         mVideoView.start();
         return true;
@@ -738,7 +738,7 @@ public class LiveActivity extends BaseActivity {
             case 2://播放解码
                 mVideoView.release();
                 livePlayerManager.changeLivePlayerType(mVideoView, position, currentLiveChannelItem.getChannelName());
-                mVideoView.setUrl(currentLiveChannelItem.getUrl());
+                mVideoView.setUrl(currentLiveChannelItem.getUrl(),currentLiveChannelItem.getUrl());
                 mVideoView.start();
                 break;
             case 3://超时换源
@@ -1150,7 +1150,7 @@ public class LiveActivity extends BaseActivity {
     public void changePlayer(int position){
         mVideoView.release();
         livePlayerManager.changeLivePlayerType(mVideoView, position, currentLiveChannelItem.getChannelName());
-        mVideoView.setUrl(currentLiveChannelItem.getUrl());
+        mVideoView.setUrl(currentLiveChannelItem.getUrl(),currentLiveChannelItem.getUrl());
         mVideoView.start();
     }
 

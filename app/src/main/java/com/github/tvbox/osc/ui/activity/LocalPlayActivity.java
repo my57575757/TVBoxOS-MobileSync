@@ -13,6 +13,8 @@ import com.github.tvbox.osc.base.BaseVbActivity;
 import com.github.tvbox.osc.bean.ParseBean;
 import com.github.tvbox.osc.bean.VideoInfo;
 import com.github.tvbox.osc.bean.VodInfo;
+import com.github.tvbox.osc.cache.Cache;
+import com.github.tvbox.osc.cache.CacheManager;
 import com.github.tvbox.osc.constant.CacheConst;
 import com.github.tvbox.osc.databinding.ActivityLocalPlayBinding;
 import com.github.tvbox.osc.event.RefreshEvent;
@@ -21,7 +23,10 @@ import com.github.tvbox.osc.player.controller.LocalVideoController;
 import com.github.tvbox.osc.receiver.BatteryReceiver;
 import com.github.tvbox.osc.ui.dialog.AllLocalSeriesDialog;
 import com.github.tvbox.osc.util.HawkConfig;
+import com.github.tvbox.osc.util.LOG;
+import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.PlayerHelper;
+import com.github.tvbox.osc.util.SyncUtil;
 import com.google.common.reflect.TypeToken;
 import com.lxj.xpopup.XPopup;
 import com.lxj.xpopup.core.BasePopupView;
@@ -31,9 +36,12 @@ import com.orhanobut.hawk.Hawk;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -100,19 +108,17 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
             uri = Uri.parse("file://"+file.getAbsolutePath()).toString();
         }
         mController.setTitle(videoInfo.getDisplayName());
-        mVideoView.setUrl(uri); //设置视频地址
+        mVideoView.setUrl(uri,uri); //设置视频地址
 
         mVideoView.setProgressManager(new ProgressManager() {
             @Override
             public void saveProgress(String url, long progress) {// 就本地视频页面用sp,其余用Hawk
-                //有点本地文件确实总时长,设置下总时长,为什么用path,因为电影列表要通过媒体文件的path获取缓存的时长/进度,存取报纸缓存的key一直
-                SPUtils.getInstance(CacheConst.VIDEO_DURATION_SP).put(path, mVideoView.getDuration());
-                SPUtils.getInstance(CacheConst.VIDEO_PROGRESS_SP).put(path, progress);
+                CacheManager.save(MD5.string2MD5(url), progress);
             }
 
             @Override
             public long getSavedProgress(String url) {
-                return SPUtils.getInstance(CacheConst.VIDEO_PROGRESS_SP).getLong(path);
+                return LocalPlayActivity.this.getSavedProgress(url);
             }
         });
 
@@ -123,6 +129,33 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
         }else {
             mVideoView.start(); //开始播放，不调用则不自动播放
         }
+    }
+    public long getSavedProgress(String url) {
+        LOG.e("url:::"+url);
+        int st = 0;
+        try {
+            st = mVodPlayerCfg.getInt("st");
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        long skip = st * 1000L;
+        Object theCache=CacheManager.getCache(MD5.string2MD5(url));
+        if (theCache == null) {
+            return skip;
+        }
+        long rec = 0;
+        if (theCache instanceof Long) {
+            rec = (Long) theCache;
+        } else if (theCache instanceof String) {
+            try {
+                rec = Long.parseLong((String) theCache);
+            } catch (NumberFormatException e) {
+                System.out.println("String value is not a valid long.");
+            }
+        } else {
+            System.out.println("Value cannot be converted to long.");
+        }
+        return Math.max(rec, skip);
     }
 
     private void initController() {
@@ -292,5 +325,32 @@ public class LocalPlayActivity extends BaseVbActivity<ActivityLocalPlayBinding> 
             seriesList.add(vodSeries);
         }
         return seriesList;
+    }
+
+    //序列化存储数据需要转换成二进制
+    private static <T> byte[] toByteArray(T body) {
+        ByteArrayOutputStream baos = null;
+        ObjectOutputStream oos = null;
+        try {
+            baos = new ByteArrayOutputStream();
+            oos = new ObjectOutputStream(baos);
+            oos.writeObject(body);
+            oos.flush();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (baos != null) {
+                    baos.close();
+                }
+                if (oos != null) {
+                    oos.close();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return new byte[0];
     }
 }

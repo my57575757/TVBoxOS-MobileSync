@@ -75,6 +75,7 @@ import com.github.tvbox.osc.util.HawkConfig;
 import com.github.tvbox.osc.util.LOG;
 import com.github.tvbox.osc.util.MD5;
 import com.github.tvbox.osc.util.PlayerHelper;
+import com.github.tvbox.osc.util.SyncUtil;
 import com.github.tvbox.osc.util.VideoParseRuler;
 import com.github.tvbox.osc.util.thunder.Jianpian;
 import com.github.tvbox.osc.util.thunder.Thunder;
@@ -168,6 +169,7 @@ public class PlayFragment extends BaseLazyFragment {
     }
 
     public long getSavedProgress(String url) {
+        LOG.e("url:::"+url);
         int st = 0;
         try {
             st = mVodPlayerCfg.getInt("st");
@@ -751,14 +753,15 @@ public class PlayFragment extends BaseLazyFragment {
         return StringUtils.join(lines, linesplit);
     }
 
-    void playUrl(String url, HashMap<String, String> headers) {
+    void playUrl(String url, HashMap<String, String> headers,String trueUrl) {
+        LOG.e("mCurrentUrl:"+url);
         mCurrentUrl = url;
         if (!Hawk.get(HawkConfig.VIDEO_PURIFY, true)) {
-            startPlayUrl(url, headers);
+            startPlayUrl(url, headers, trueUrl);
             return;
         }
         if (!url.contains("://127.0.0.1/") && !url.contains(".m3u8")) {
-            startPlayUrl(url, headers);
+            startPlayUrl(url, headers, trueUrl);
             return;
         }
         OkGo.getInstance().cancelTag("m3u8-1");
@@ -779,7 +782,7 @@ public class PlayFragment extends BaseLazyFragment {
                     public void onSuccess(com.lzy.okgo.model.Response<String> response) {
                         String content = response.body();
                         if (!content.startsWith("#EXTM3U")) {
-                            startPlayUrl(url, headers);
+                            startPlayUrl(url, headers,mCurrentUrl);
                             return;
                         }
 
@@ -816,9 +819,9 @@ public class PlayFragment extends BaseLazyFragment {
 
                             RemoteServer.m3u8Content = removeMinorityUrl(url.substring(0, ilast + 1), content);
                             if (RemoteServer.m3u8Content == null)
-                                startPlayUrl(url, headers);
+                                startPlayUrl(url, headers,mCurrentUrl);
                             else {
-                                startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
+                                startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers,mCurrentUrl);
                                 //Toast.makeText(getContext(), "已移除视频广告", Toast.LENGTH_SHORT).show();
                             }
                             return;
@@ -835,9 +838,9 @@ public class PlayFragment extends BaseLazyFragment {
                                         RemoteServer.m3u8Content = removeMinorityUrl(finalforwardurl.substring(0, ilast + 1), content);
 
                                         if (RemoteServer.m3u8Content == null)
-                                            startPlayUrl(finalforwardurl, headers);
+                                            startPlayUrl(finalforwardurl, headers,mCurrentUrl);
                                         else {
-                                            startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers);
+                                            startPlayUrl("http://127.0.0.1:" + RemoteServer.serverPort + "/m3u8", headers,mCurrentUrl);
                                             //Toast.makeText(getContext(), "已移除视频广告", Toast.LENGTH_SHORT).show();
                                         }
                                     }
@@ -850,7 +853,7 @@ public class PlayFragment extends BaseLazyFragment {
                                     @Override
                                     public void onError(com.lzy.okgo.model.Response<String> response) {
                                         super.onError(response);
-                                        startPlayUrl(url, headers);
+                                        startPlayUrl(url, headers,trueUrl);
                                     }
                                 });
                     }
@@ -863,12 +866,12 @@ public class PlayFragment extends BaseLazyFragment {
                     @Override
                     public void onError(com.lzy.okgo.model.Response<String> response) {
                         super.onError(response);
-                        startPlayUrl(url, headers);
+                        startPlayUrl(url, headers,mCurrentUrl);
                     }
                 });
     }
 
-    void startPlayUrl(String url, HashMap<String, String> headers) {
+    void startPlayUrl(String url, HashMap<String, String> headers, String trueUrl) {
         LOG.i("playUrl:" + url);
         if (autoRetryCount > 0 && url.contains(".m3u8")) {
             url = "http://home.jundie.top:666/unBom.php?m3u8=" + url;//尝试去bom头再次播放
@@ -900,9 +903,9 @@ public class PlayFragment extends BaseLazyFragment {
                     PlayerHelper.updateCfg(mVideoView, mVodPlayerCfg);
                     mVideoView.setProgressKey(progressKey);
                     if (headers != null) {
-                        mVideoView.setUrl(finalUrl, headers);
+                        mVideoView.setUrl(finalUrl, headers, trueUrl);
                     } else {
-                        mVideoView.setUrl(finalUrl);
+                        mVideoView.setUrl(finalUrl,trueUrl);
                     }
                     mVideoView.start();
                     mController.resetSpeed();
@@ -954,6 +957,7 @@ public class PlayFragment extends BaseLazyFragment {
 
         mController.mSubtitleView.bindToMediaPlayer(mVideoView.getMediaPlayer());
         mController.mSubtitleView.setPlaySubtitleCacheKey(subtitleCacheKey);
+        LOG.e("subtitleCacheKey:::"+subtitleCacheKey);
         String subtitlePathCache = (String) CacheManager.getCache(MD5.string2MD5(subtitleCacheKey));
         if (subtitlePathCache != null && !subtitlePathCache.isEmpty()) {
             mController.mSubtitleView.setSubtitlePath(subtitlePathCache);
@@ -1039,7 +1043,7 @@ public class PlayFragment extends BaseLazyFragment {
                         initParse(flag, userJxList, playUrl, url);
                     } else {
                         mController.showParse(false);
-                        playUrl(playUrl + url, headers);
+                        playUrl(playUrl + url, headers,playUrl + url);
                     }
                 } catch (Throwable th) {
                     LogUtils.e(th.toString());
@@ -1215,7 +1219,7 @@ public class PlayFragment extends BaseLazyFragment {
     void autoRetryFromLoadFoundVideoUrls() {
         String videoUrl = loadFoundVideoUrls.poll();
         HashMap<String, String> header = loadFoundVideoUrlsHeader.get(videoUrl);
-        playUrl(videoUrl, header);
+        playUrl(videoUrl, header, videoUrl);
     }
 
     void initParseLoadFound() {
@@ -1247,9 +1251,9 @@ public class PlayFragment extends BaseLazyFragment {
             String jp_url = vs.url;
             mController.showParse(false);
             if (vs.url.startsWith("tvbox-xg:")) {
-                playUrl(Jianpian.JPUrlDec(jp_url.substring(9)), null);
+                playUrl(Jianpian.JPUrlDec(jp_url.substring(9)), null,Jianpian.JPUrlDec(jp_url.substring(9)));
             } else {
-                playUrl(Jianpian.JPUrlDec(jp_url), null);
+                playUrl(Jianpian.JPUrlDec(jp_url), null,Jianpian.JPUrlDec(jp_url));
             }
             return;
         }
@@ -1269,7 +1273,7 @@ public class PlayFragment extends BaseLazyFragment {
 
             @Override
             public void play(String url) {
-                playUrl(url, null);
+                playUrl(url, null,url);
             }
         })) {
             mController.showParse(false);
@@ -1444,7 +1448,7 @@ public class PlayFragment extends BaseLazyFragment {
 
                                     }
                                 }
-                                playUrl(rs.getString("url"), headers);
+                                playUrl(rs.getString("url"), headers,rs.getString("url"));
                             } catch (Throwable e) {
                                 e.printStackTrace();
                                 errorWithRetry("解析错误", false);
@@ -1500,7 +1504,7 @@ public class PlayFragment extends BaseLazyFragment {
                             String wvUrl = DefaultConfig.checkReplaceProxy(rs.optString("url", ""));
                             loadUrl(wvUrl);
                         } else {
-                            playUrl(rs.optString("url", ""), headers);
+                            playUrl(rs.optString("url", ""), headers,rs.optString("url", ""));
                         }
                     }
                 }
@@ -1565,7 +1569,7 @@ public class PlayFragment extends BaseLazyFragment {
                             if (rs.has("jxFrom")) {
                                 ToastUtils.showShort("解析来自:" + rs.optString("jxFrom"));
                             }
-                            playUrl(rs.optString("url", ""), headers);
+                            playUrl(rs.optString("url", ""), headers,rs.optString("url", ""));
                         }
                     }
                 }
@@ -1823,7 +1827,7 @@ public class PlayFragment extends BaseLazyFragment {
                         String cookie = CookieManager.getInstance().getCookie(url);
                         if (!TextUtils.isEmpty(cookie))
                             headers.put("Cookie", " " + cookie);//携带cookie
-                        playUrl(url, headers);
+                        playUrl(url, headers,url);
                         stopLoadWebView(false);
                     }
                 }

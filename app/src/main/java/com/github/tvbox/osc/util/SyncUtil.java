@@ -262,6 +262,7 @@ public class SyncUtil {
         }).start();
     }
     public static Long getCache(String key){
+
         if (android.os.Build.VERSION.SDK_INT > 9) {
             StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
             StrictMode.setThreadPolicy(policy);
@@ -295,7 +296,8 @@ public class SyncUtil {
                 }
             }
         }catch (Exception e){
-
+            e.printStackTrace();
+            Log.e("DslTabLayout", e.getMessage());
         }
         return returnVal;
     }
