@@ -88,8 +88,14 @@ android {
     }
 }
 
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
 dependencies {
-    api fileTree(dir: "libs", include: ['*.jar', '*.aar'])
+    api fileTree(dir: "libs", include: ['*.jar'])
 
     implementation 'com.google.android.material:material:1.4.0'
 
@@ -163,8 +169,15 @@ dependencies {
     implementation 'com.hyman:flowlayout-lib:1.1.2'
     //崩溃
     implementation project(":crash")
-    //dlna投屏
-    implementation 'com.github.devin1014.DLNA-Cast:dlna-dmc:V1.0.0'
+    //dlna投屏（jitpack 上 V1.0.0 构件构建失败，aars 由 V1.0.0 源码本地构建放入 libs）
+    api(name: 'dlna-dmc', ext: 'aar')
+    api(name: 'dlna-core', ext: 'aar')
+    api 'org.fourthline.cling:cling-core:2.1.1'
+    api 'org.fourthline.cling:cling-support:2.1.1'
+    api 'org.eclipse.jetty:jetty-server:8.1.21.v20160908'
+    api 'org.eclipse.jetty:jetty-servlet:8.1.21.v20160908'
+    api 'org.eclipse.jetty:jetty-client:8.1.21.v20160908'
+    api 'com.orhanobut:logger:2.2.0'
     // Lifecycles only (without ViewModel or LiveData)
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.2.0"
 }
