@@ -21,12 +21,12 @@ description: MBox(TVBox 二次开发版，包名 com.github.tvbox.osc)发版流�
 ## 铁律
 
 1. **真机 `872c0cf8` 一直连着**：install/uninstall 一律显式 `-s 127.0.0.1:58526`，绝不能裸跑 `adb install`。
-2. **push GitHub 必须用户当次明确授权**；commit 可以按流程做，push 等授权。
+2. **调用 `/mbox-release` 本身即视为当次授权 push**：步骤 0 commit 后直接 `git push origin my_main`，无需再问。流程之外的临时 push 仍需用户明确授权。HTTPS 直推失败先重试（透明代理偶发），再考虑 ssh.github.com:443 通道。
 3. `app/src/main/java/com/github/tvbox/osc/ui/fragment/PlayFragment.java` 是用户自己的未提交改动（jp_url 调试），**不要替他提交**，commit 时只 add 本流程相关文件。
 4. WSA 里 App 跑在 displayId=2 的 freeform 窗口：uiautomator 必须 `--display-id 2`，`input -d 2 tap`；dump 出的 bounds 是**全局屏幕坐标**（窗口有偏移），不是窗口内坐标。
 5. 控制台是 GBK：脚本输出别 print emoji，必要时 `PYTHONUTF8=1` 或把输出写 UTF-8 文件再读。
 
-## 步骤 0：提交代码（push 待授权）
+## 步骤 0：提交并推送代码
 
 ```bash
 cd /d/project/TVBoxMobileSync
@@ -42,7 +42,11 @@ commit message 中文描述 why，结尾加：
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 ```
 
-个人 fork、已在 WSA 真机验证，commit 前自测门禁可豁免；push 仅在用户明确说「push」后执行。
+个人 fork、已在 WSA 真机验证，commit 前自测门禁可豁免。commit 后直接推送（`/mbox-release` 调用即授权）：
+
+```bash
+git push origin my_main
+```
 
 ## 步骤 1：编译 release APK
 
