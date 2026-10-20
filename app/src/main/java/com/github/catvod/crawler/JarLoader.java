@@ -25,6 +25,7 @@ public class JarLoader {
     private ConcurrentHashMap<String, DexClassLoader> classLoaders = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, Method> proxyMethods = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, Spider> spiders = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Object> jarLocks = new ConcurrentHashMap<>();
     private volatile String recentJarKey = "";
 
     /**
@@ -86,37 +87,46 @@ public class JarLoader {
     private DexClassLoader loadJarInternal(String jar, String md5, String key) {
         if (classLoaders.contains(key))
             return classLoaders.get(key);
-        File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + key + ".jar");
-        if (!md5.isEmpty()) {
-            if (cache.exists() && MD5.getFileMd5(cache).equalsIgnoreCase(md5)) {
+        // 全局搜索会同 jar 多站点并发触发：按 jarKey 去重，避免同一个 jar 被重复加载。
+        // FTY/Wex Guard 的 DexNative.<clinit> 会先清掉缓存目录里同类解压 so 再各自 System.load，
+        // 并发重复加载会互删对方 so（dlopen not found），部分初始化失败后 native 以 null loader
+        // 回调 getSpider，在 WSA houdini 下直接 abort 进程。
+        Object lock = jarLocks.computeIfAbsent(key, k -> new Object());
+        synchronized (lock) {
+            if (classLoaders.contains(key))
+                return classLoaders.get(key);
+            File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + key + ".jar");
+            if (!md5.isEmpty()) {
+                if (cache.exists() && MD5.getFileMd5(cache).equalsIgnoreCase(md5)) {
+                    loadClassLoader(cache.getAbsolutePath(), key);
+                    return classLoaders.get(key);
+                }
+            }
+            try {
+                Response response = OkGo.<File>get(jar).execute();
+                InputStream is = response.body().byteStream();
+                OutputStream os = new FileOutputStream(cache);
+                try {
+                    byte[] buffer = new byte[2048];
+                    int length;
+                    while ((length = is.read(buffer)) > 0) {
+                        os.write(buffer, 0, length);
+                    }
+                } finally {
+                    try {
+                        is.close();
+                        os.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
                 loadClassLoader(cache.getAbsolutePath(), key);
                 return classLoaders.get(key);
+            } catch (Throwable e) {
+                e.printStackTrace();
             }
+            return null;
         }
-        try {
-            Response response = OkGo.<File>get(jar).execute();
-            InputStream is = response.body().byteStream();
-            OutputStream os = new FileOutputStream(cache);
-            try {
-                byte[] buffer = new byte[2048];
-                int length;
-                while ((length = is.read(buffer)) > 0) {
-                    os.write(buffer, 0, length);
-                }
-            } finally {
-                try {
-                    is.close();
-                    os.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            loadClassLoader(cache.getAbsolutePath(), key);
-            return classLoaders.get(key);
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     public Spider getSpider(String key, String cls, String ext, String jar) {
